@@ -12,8 +12,8 @@ pub struct Scanner<'a> {
     keywords: HashMap<&'static str, TokenType>,
 }
 
-impl Scanner<'_> {
-    pub fn new(source: &str) -> Scanner {
+impl<'a> Scanner<'a> {
+    pub fn new(source: &'a str) -> Scanner<'a> {
         Scanner {
             source_str: source,
             source: source.chars().peekable(),
@@ -45,7 +45,7 @@ impl Scanner<'_> {
         }
     }
 
-    pub fn scan_token(&mut self) -> Token {
+    pub fn scan_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
 
         self.start = self.current;
@@ -111,7 +111,7 @@ impl Scanner<'_> {
         }
     }
 
-    fn identifier(&mut self) -> Token {
+    fn identifier(&mut self) -> Token<'a> {
         while alpha(self.peek()) || digit(self.peek()) {
             self.advance();
         }
@@ -125,7 +125,7 @@ impl Scanner<'_> {
         }
     }
 
-    fn number(&mut self) -> Token {
+    fn number(&mut self) -> Token<'a> {
         while digit(self.peek()) {
             self.advance();
         }
@@ -141,7 +141,7 @@ impl Scanner<'_> {
         self.make_token(TokenType::Number)
     }
 
-    fn string(&mut self) -> Token {
+    fn string(&mut self) -> Token<'a> {
         while self.peek() != '"' && !self.at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
@@ -214,7 +214,7 @@ impl Scanner<'_> {
             .unwrap_or('\0')
     }
 
-    fn make_token(&self, kind: TokenType) -> Token {
+    fn make_token(&self, kind: TokenType) -> Token<'a> {
         Token {
             kind,
             slice: self.token_slice(),
@@ -222,11 +222,11 @@ impl Scanner<'_> {
         }
     }
 
-    fn token_slice(&self) -> &str {
+    fn token_slice(&self) -> &'a str {
         &self.source_str[self.start..self.current]
     }
 
-    fn error_token(&self, message: &'static str) -> Token {
+    fn error_token(&self, message: &'static str) -> Token<'a> {
         Token {
             kind: TokenType::Error,
             slice: message,
@@ -243,13 +243,14 @@ fn alpha(c: char) -> bool {
     (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Token<'a> {
     pub kind: TokenType,
     pub slice: &'a str,
     pub line: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, ToPrimitive)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,

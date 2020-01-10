@@ -10,7 +10,7 @@ pub struct VM {
     stack: Vec<Value>,
 }
 
-impl VM {
+impl<'a> VM {
     pub fn new() -> VM {
         VM {
             chunk: None,
@@ -19,9 +19,17 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, source: &str) -> InterpretResult {
-        compiler::compile(source);
-        InterpretResult::Ok
+    pub fn interpret(&mut self, source: &'a str) -> InterpretResult {
+        let mut chunk = Chunk::new();
+
+        if !compiler::compile(source, &mut chunk) {
+            return InterpretResult::CompileError;
+        }
+
+        self.chunk = Some(chunk);
+        self.pc = 0;
+
+        self.run()
     }
 
     fn run(&mut self) -> InterpretResult {
