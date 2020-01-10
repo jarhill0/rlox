@@ -6,11 +6,32 @@ use num;
 pub enum OpCode {
     Return,
     Constant,
+    Negate,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
 }
 
 impl OpCode {
     pub fn from_u8(n: u8) -> OpCode {
         num::FromPrimitive::from_u8(n).expect("Invalid OpCode value.")
+    }
+}
+
+impl Byte for OpCode {
+    fn byte(&self) -> u8 {
+        num::ToPrimitive::to_u8(self).unwrap()
+    }
+}
+
+pub trait Byte {
+    fn byte(&self) -> u8;
+}
+
+impl Byte for u8 {
+    fn byte(&self) -> u8 {
+        *self
     }
 }
 
@@ -29,13 +50,8 @@ impl Chunk {
         }
     }
 
-    pub fn write_opcode(&mut self, code: OpCode, line: u64) {
-        self.codes.push(num::ToPrimitive::to_u8(&code).unwrap());
-        self.lines.push(line);
-    }
-
-    pub fn write_byte(&mut self, byte: u8, line: u64) {
-        self.codes.push(byte);
+    pub fn write<T: Byte>(&mut self, byte: T, line: u64) {
+        self.codes.push(byte.byte());
         self.lines.push(line);
     }
 

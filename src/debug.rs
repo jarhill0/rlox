@@ -1,11 +1,12 @@
-use crate::chunk;
+use crate::chunk::{self, OpCode};
+use crate::value;
 
 pub fn disassemble(chunk: &chunk::Chunk, name: &str) {
     println!("== {} ==", name);
 
     let mut offset = 0;
     while offset < chunk.len() {
-        disassemble_instr(&chunk, &mut offset);
+        offset = disassemble_instr(&chunk, offset);
     }
 }
 
@@ -14,25 +15,26 @@ fn get_op_code(chunk: &chunk::Chunk, offset: usize) -> chunk::OpCode {
     chunk::OpCode::from_u8(*op_code)
 }
 
-fn disassemble_instr(chunk: &chunk::Chunk, offset: &mut usize) {
+pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
     print!("{:04} ", offset);
 
-    {
-        let offset = *offset;
-
-        if offset > 0 && chunk.line_of(offset) == chunk.line_of(offset - 1) {
-            print!("   | ");
-        } else {
-            print!("{:4} ", chunk.line_of(offset));
-        }
+    if offset > 0 && chunk.line_of(offset) == chunk.line_of(offset - 1) {
+        print!("   | ");
+    } else {
+        print!("{:4} ", chunk.line_of(offset));
     }
 
-    let op_code = get_op_code(chunk, *offset);
+    let op_code = get_op_code(chunk, offset);
 
-    *offset = match op_code {
-        chunk::OpCode::Return => simple_instruction("Return", *offset),
-        chunk::OpCode::Constant => constant_instruction("Constant", chunk, *offset),
-    };
+    match op_code {
+        OpCode::Return => simple_instruction("Return", offset),
+        OpCode::Constant => constant_instruction("Constant", chunk, offset),
+        OpCode::Negate => simple_instruction("Negate", offset),
+        OpCode::Add => simple_instruction("Add", offset),
+        OpCode::Subtract => simple_instruction("Subtract", offset),
+        OpCode::Multiply => simple_instruction("Multiply", offset),
+        OpCode::Divide => simple_instruction("Divide", offset),
+    }
 }
 
 fn simple_instruction(name: &str, offset: usize) -> usize {
@@ -46,7 +48,7 @@ fn constant_instruction(name: &str, chunk: &chunk::Chunk, offset: usize) -> usiz
         .expect("Constant has one immediate.");
     print!("{:<16} {:4} '", name, constant);
 
-    chunk.get_value(constant).unwrap().print();
+    value::print(*chunk.get_value(constant).unwrap());
     println!("'");
     offset + 2
 }
