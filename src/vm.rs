@@ -42,7 +42,7 @@ impl<'a> VM {
                     value::print(*val);
                     print!(" ]");
                 }
-                println!("");
+                println!();
 
                 debug::disassemble_instr(self.chunk(), self.pc);
             }
@@ -52,7 +52,7 @@ impl<'a> VM {
             match op_code {
                 OpCode::Return => {
                     value::print(self.pop());
-                    println!("");
+                    println!();
                     return InterpretResult::Ok;
                 }
                 OpCode::Constant => {

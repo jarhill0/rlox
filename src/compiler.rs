@@ -136,16 +136,14 @@ impl<'a> Parser<'a> {
 
     fn end(&mut self) {
         self.emit_return();
-        if DEBUG_PRINT_CODE {
-            if !self.had_error {
-                disassemble(self.current_chunk(), "code");
-            }
+        if DEBUG_PRINT_CODE && !self.had_error {
+            disassemble(self.current_chunk(), "code");
         }
     }
 
     fn binary(&mut self) {
         let operator_type = self.previous().kind;
-        
+
         let rule = get_rule(operator_type);
         self.parse_precedence(rule.precedence.next_highest());
 
@@ -219,7 +217,7 @@ enum Precedence {
 }
 
 impl Precedence {
-    fn next_highest(&self) -> Precedence {
+    fn next_highest(self) -> Precedence {
         match self {
             Precedence::None => Precedence::Assignment,
             Precedence::Assignment => Precedence::Or,

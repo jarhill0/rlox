@@ -22,7 +22,7 @@ fn main() {
     if args.len() == 1 {
         repl(vm);
     } else if args.len() == 2 {
-        run_file(vm, &args.skip(1).next().unwrap());
+        run_file(vm, &args.nth(1).unwrap());
     } else {
         eprintln!("Usage: {} [path]", args.next().unwrap());
         process::exit(64);
@@ -36,8 +36,8 @@ fn repl(mut vm: vm::VM) {
         print!("> ");
         io::stdout().flush().expect("Could not flush stdout");
         let status = io::stdin().read_line(&mut line);
-        if status.is_err() || line.len() == 0 {
-            println!("");
+        if status.is_err() || line.is_empty() {
+            println!();
             break;
         }
 
