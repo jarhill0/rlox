@@ -16,18 +16,6 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn new_bool(value: bool) -> Value {
-        Value::Bool(value)
-    }
-
-    pub fn new_nil() -> Value {
-        Value::Nil
-    }
-
-    pub fn new_number(value: f64) -> Value {
-        Value::Number(value)
-    }
-
     pub fn is_falsey(self) -> bool {
         match self {
             Value::Nil => true,

@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
     fn number(&mut self) {
         // it will parse because it was validated in the parser.
         let value = f64::from_str(self.previous().slice).unwrap();
-        self.emit_constant(Value::new_number(value));
+        self.emit_constant(Value::Number(value));
     }
 
     fn unary(&mut self) {
@@ -143,22 +143,25 @@ impl<'a> Parser<'a> {
     }
 
     fn binary(&mut self) {
+        use OpCode::*;
+        use TokenType::*;
+
         let operator_type = self.previous().kind;
 
         let rule = get_rule(operator_type);
         self.parse_precedence(rule.precedence.next_highest());
 
         match operator_type {
-            TokenType::Plus => self.emit_byte(OpCode::Add),
-            TokenType::Minus => self.emit_byte(OpCode::Subtract),
-            TokenType::Star => self.emit_byte(OpCode::Multiply),
-            TokenType::Slash => self.emit_byte(OpCode::Divide),
-            TokenType::BangEqual => self.emit_bytes(OpCode::Equal, OpCode::Not),
-            TokenType::EqualEqual => self.emit_byte(OpCode::Equal),
+            Plus => self.emit_byte(Add),
+            Minus => self.emit_byte(Subtract),
+            Star => self.emit_byte(Multiply),
+            Slash => self.emit_byte(Divide),
+            BangEqual => self.emit_bytes(OpCode::Equal, Not),
+            EqualEqual => self.emit_byte(OpCode::Equal),
             TokenType::Greater => self.emit_byte(OpCode::Greater),
-            TokenType::GreaterEqual => self.emit_bytes(OpCode::Less, OpCode::Not),
+            GreaterEqual => self.emit_bytes(OpCode::Less, Not),
             TokenType::Less => self.emit_byte(OpCode::Less),
-            TokenType::LessEqual => self.emit_bytes(OpCode::Greater, OpCode::Not),
+            LessEqual => self.emit_bytes(OpCode::Greater, Not),
             _ => panic!("unreachable"),
         }
     }
@@ -234,18 +237,20 @@ enum Precedence {
 
 impl Precedence {
     fn next_highest(self) -> Precedence {
+        use Precedence::*;
+
         match self {
-            Precedence::None => Precedence::Assignment,
-            Precedence::Assignment => Precedence::Or,
-            Precedence::Or => Precedence::And,
-            Precedence::And => Precedence::Equality,
-            Precedence::Equality => Precedence::Comparison,
-            Precedence::Comparison => Precedence::Term,
-            Precedence::Term => Precedence::Factor,
-            Precedence::Factor => Precedence::Unary,
-            Precedence::Unary => Precedence::Call,
-            Precedence::Call => Precedence::Primary,
-            Precedence::Primary => Precedence::Primary,
+            Precedence::None => Assignment,
+            Assignment => Or,
+            Or => And,
+            And => Equality,
+            Equality => Comparison,
+            Comparison => Term,
+            Term => Factor,
+            Factor => Unary,
+            Unary => Call,
+            Call => Primary,
+            Primary => Primary,
         }
     }
 }

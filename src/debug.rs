@@ -16,6 +16,8 @@ fn get_op_code(chunk: &chunk::Chunk, offset: usize) -> chunk::OpCode {
 }
 
 pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
+    use OpCode::*;
+
     print!("{:04} ", offset);
 
     if offset > 0 && chunk.line_of(offset) == chunk.line_of(offset - 1) {
@@ -27,20 +29,20 @@ pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
     let op_code = get_op_code(chunk, offset);
 
     match op_code {
-        OpCode::Return => simple_instruction("Return", offset),
-        OpCode::Constant => constant_instruction("Constant", chunk, offset),
-        OpCode::Negate => simple_instruction("Negate", offset),
-        OpCode::Add => simple_instruction("Add", offset),
-        OpCode::Subtract => simple_instruction("Subtract", offset),
-        OpCode::Multiply => simple_instruction("Multiply", offset),
-        OpCode::Divide => simple_instruction("Divide", offset),
-        OpCode::Nil => simple_instruction("Nil", offset),
-        OpCode::True => simple_instruction("True", offset),
-        OpCode::False => simple_instruction("False", offset),
-        OpCode::Not => simple_instruction("Not", offset),
-        OpCode::Equal => simple_instruction("Equal", offset),
-        OpCode::Less => simple_instruction("Less", offset),
-        OpCode::Greater => simple_instruction("Greater", offset),
+        Return => simple_instruction("Return", offset),
+        Constant => constant_instruction("Constant", chunk, offset),
+        Negate => simple_instruction("Negate", offset),
+        Add => simple_instruction("Add", offset),
+        Subtract => simple_instruction("Subtract", offset),
+        Multiply => simple_instruction("Multiply", offset),
+        Divide => simple_instruction("Divide", offset),
+        Nil => simple_instruction("Nil", offset),
+        True => simple_instruction("True", offset),
+        False => simple_instruction("False", offset),
+        Not => simple_instruction("Not", offset),
+        Equal => simple_instruction("Equal", offset),
+        Less => simple_instruction("Less", offset),
+        Greater => simple_instruction("Greater", offset),
     }
 }
 

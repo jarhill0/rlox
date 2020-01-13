@@ -33,6 +33,9 @@ impl<'a> VM {
     }
 
     fn run(&mut self) -> InterpretResult {
+        use OpCode::*;
+        use Value::*;
+
         loop {
             if common::DEBUG_TRACE_EXECUTION {
                 // Printing the stack.
@@ -50,63 +53,63 @@ impl<'a> VM {
             let instruction = self.read_byte();
             let op_code = OpCode::from_u8(instruction);
             match op_code {
-                OpCode::Return => {
+                Return => {
                     value::print(self.pop());
                     println!();
                     return InterpretResult::Ok;
                 }
-                OpCode::Constant => {
+                Constant => {
                     let constant = self.read_constant();
                     self.push(constant);
                 }
-                OpCode::Nil => self.push(Value::new_nil()),
-                OpCode::True => self.push(Value::new_bool(true)),
-                OpCode::False => self.push(Value::new_bool(false)),
-                OpCode::Equal => {
+                OpCode::Nil => self.push(Value::Nil),
+                True => self.push(Bool(true)),
+                False => self.push(Bool(false)),
+                Equal => {
                     let (a, b) = self.pop_two();
-                    self.push(Value::new_bool(a == b));
+                    self.push(Bool(a == b));
                 }
-                OpCode::Greater => {
-                    if let Some(result) = self.binary_num_op(Value::new_bool, |a, b| a > b) {
+                Greater => {
+                    if let Some(result) = self.binary_num_op(|a, b| Bool(a > b)) {
                         return result;
                     }
                 }
-                OpCode::Less => {
-                    if let Some(result) = self.binary_num_op(Value::new_bool, |a, b| a < b) {
+                Less => {
+                    if let Some(result) = self.binary_num_op(|a, b| Bool(a < b)) {
                         return result;
                     }
                 }
-                OpCode::Negate => {
+                Negate => {
                     let val = self.pop();
-                    if let Value::Number(val) = val {
-                        self.push(Value::new_number(-val));
+                    if let Number(val) = val {
+                        self.push(Number(-val));
                     } else {
                         self.push(val);
                         self.runtime_error("Operand must be a number.");
                         return InterpretResult::RuntimeError;
                     }
                 }
-                OpCode::Not => {
+                Not => {
                     let val = self.pop();
-                    self.push(Value::new_bool(val.is_falsey()));
+                    self.push(Bool(val.is_falsey()));
                 }
-                OpCode::Add => {
-                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a + b) {
+                Add => {
+                    if let Some(result) = self.binary_num_op(|a, b| Number(a + b)) {
                         return result;
                     }
                 }
-                OpCode::Subtract => {
-                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a - b) {
+                Subtract => {
+                    if let Some(result) = self.binary_num_op(|a, b| Number(a - b)) {
                         return result;
                     }
                 }
-                OpCode::Multiply => {
-                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a * b) {
+                Multiply => {
+                    if let Some(result) = self.binary_num_op(|a, b| Number(a * b)) {
                         return result;
                     }
                 }
-                OpCode::Divide => {
-                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a / b) {
+                Divide => {
+                    if let Some(result) = self.binary_num_op(|a, b| Number(a / b)) {
                         return result;
                     }
                 }
@@ -114,16 +117,15 @@ impl<'a> VM {
         }
     }
 
-    fn binary_num_op<R, S, T>(&mut self, constructor: S, operation: T) -> Option<InterpretResult>
+    fn binary_num_op<T>(&mut self, operation: T) -> Option<InterpretResult>
     where
-        S: Fn(R) -> Value,
-        T: Fn(f64, f64) -> R,
+        T: Fn(f64, f64) -> Value,
     {
         let (a, b) = self.pop_two();
         let mut good_types = true;
         if let Value::Number(a) = a {
             if let Value::Number(b) = b {
-                self.push(constructor(operation(a, b)));
+                self.push(operation(a, b));
             } else {
                 good_types = false
             }
