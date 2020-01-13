@@ -34,6 +34,13 @@ pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
         OpCode::Subtract => simple_instruction("Subtract", offset),
         OpCode::Multiply => simple_instruction("Multiply", offset),
         OpCode::Divide => simple_instruction("Divide", offset),
+        OpCode::Nil => simple_instruction("Nil", offset),
+        OpCode::True => simple_instruction("True", offset),
+        OpCode::False => simple_instruction("False", offset),
+        OpCode::Not => simple_instruction("Not", offset),
+        OpCode::Equal => simple_instruction("Equal", offset),
+        OpCode::Less => simple_instruction("Less", offset),
+        OpCode::Greater => simple_instruction("Greater", offset),
     }
 }
 

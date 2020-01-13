@@ -59,34 +59,109 @@ impl<'a> VM {
                     let constant = self.read_constant();
                     self.push(constant);
                 }
+                OpCode::Nil => self.push(Value::new_nil()),
+                OpCode::True => self.push(Value::new_bool(true)),
+                OpCode::False => self.push(Value::new_bool(false)),
+                OpCode::Equal => {
+                    let (a, b) = self.pop_two();
+                    self.push(Value::new_bool(a == b));
+                }
+                OpCode::Greater => {
+                    if let Some(result) = self.binary_num_op(Value::new_bool, |a, b| a > b) {
+                        return result;
+                    }
+                }
+                OpCode::Less => {
+                    if let Some(result) = self.binary_num_op(Value::new_bool, |a, b| a < b) {
+                        return result;
+                    }
+                }
                 OpCode::Negate => {
-                    let neg = -self.pop();
-                    self.push(neg);
+                    let val = self.pop();
+                    if let Value::Number(val) = val {
+                        self.push(Value::new_number(-val));
+                    } else {
+                        self.push(val);
+                        self.runtime_error("Operand must be a number.");
+                        return InterpretResult::RuntimeError;
+                    }
+                }
+                OpCode::Not => {
+                    let val = self.pop();
+                    self.push(Value::new_bool(val.is_falsey()));
                 }
                 OpCode::Add => {
-                    let (a, b) = self.pop_two();
-                    self.push(a + b);
+                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a + b) {
+                        return result;
+                    }
                 }
                 OpCode::Subtract => {
-                    let (a, b) = self.pop_two();
-                    self.push(a - b);
+                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a - b) {
+                        return result;
+                    }
                 }
                 OpCode::Multiply => {
-                    let (a, b) = self.pop_two();
-                    self.push(a * b);
+                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a * b) {
+                        return result;
+                    }
                 }
                 OpCode::Divide => {
-                    let (a, b) = self.pop_two();
-                    self.push(a / b);
+                    if let Some(result) = self.binary_num_op(Value::new_number, |a, b| a / b) {
+                        return result;
+                    }
                 }
             };
         }
+    }
+
+    fn binary_num_op<R, S, T>(&mut self, constructor: S, operation: T) -> Option<InterpretResult>
+    where
+        S: Fn(R) -> Value,
+        T: Fn(f64, f64) -> R,
+    {
+        let (a, b) = self.pop_two();
+        let mut good_types = true;
+        if let Value::Number(a) = a {
+            if let Value::Number(b) = b {
+                self.push(constructor(operation(a, b)));
+            } else {
+                good_types = false
+            }
+        } else {
+            good_types = false
+        }
+        if !good_types {
+            self.push_two(a, b);
+            self.runtime_error("Operands must be numbers.");
+            Some(InterpretResult::RuntimeError)
+        } else {
+            None
+        }
+    }
+
+    fn reset_stack(&mut self) {
+        self.stack.clear();
+    }
+
+    fn runtime_error(&mut self, msg: &str) {
+        eprintln!("{}", msg);
+
+        let instruction = self.pc - 1;
+        let line = self.chunk().line_of(instruction);
+        eprintln!("[line {}] in script\n", line);
+
+        self.reset_stack();
     }
 
     fn pop_two(&mut self) -> (Value, Value) {
         let b = self.pop();
         let a = self.pop();
         (a, b)
+    }
+
+    fn push_two(&mut self, a: Value, b: Value) {
+        self.push(a);
+        self.push(b);
     }
 
     fn chunk(&self) -> &Chunk {

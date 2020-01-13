@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
     fn number(&mut self) {
         // it will parse because it was validated in the parser.
         let value = f64::from_str(self.previous().slice).unwrap();
-        self.emit_constant(value);
+        self.emit_constant(Value::new_number(value));
     }
 
     fn unary(&mut self) {
@@ -55,7 +55,8 @@ impl<'a> Parser<'a> {
 
         match operator_type {
             TokenType::Minus => self.emit_byte(OpCode::Negate),
-            _ => (),
+            TokenType::Bang => self.emit_byte(OpCode::Not),
+            _ => panic!("unreachable"),
         }
     }
 
@@ -152,7 +153,22 @@ impl<'a> Parser<'a> {
             TokenType::Minus => self.emit_byte(OpCode::Subtract),
             TokenType::Star => self.emit_byte(OpCode::Multiply),
             TokenType::Slash => self.emit_byte(OpCode::Divide),
-            _ => (),
+            TokenType::BangEqual => self.emit_bytes(OpCode::Equal, OpCode::Not),
+            TokenType::EqualEqual => self.emit_byte(OpCode::Equal),
+            TokenType::Greater => self.emit_byte(OpCode::Greater),
+            TokenType::GreaterEqual => self.emit_bytes(OpCode::Less, OpCode::Not),
+            TokenType::Less => self.emit_byte(OpCode::Less),
+            TokenType::LessEqual => self.emit_bytes(OpCode::Greater, OpCode::Not),
+            _ => panic!("unreachable"),
+        }
+    }
+
+    fn literal(&mut self) {
+        match self.previous().kind {
+            TokenType::False => self.emit_byte(OpCode::False),
+            TokenType::Nil => self.emit_byte(OpCode::Nil),
+            TokenType::True => self.emit_byte(OpCode::True),
+            _ => panic!("unreachable"),
         }
     }
 
@@ -300,14 +316,14 @@ fn get_rule<'a>(kind: TokenType) -> ParseRule<'a> {
             precedence: Precedence::Factor,
         },
         TokenType::Bang => ParseRule {
-            prefix: None,
+            prefix: Some(Parser::unary),
             infix: None,
             precedence: Precedence::None,
         },
         TokenType::BangEqual => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Parser::binary),
+            precedence: Precedence::Equality,
         },
         TokenType::Equal => ParseRule {
             prefix: None,
@@ -316,28 +332,28 @@ fn get_rule<'a>(kind: TokenType) -> ParseRule<'a> {
         },
         TokenType::EqualEqual => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Parser::binary),
+            precedence: Precedence::Equality,
         },
         TokenType::Greater => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Parser::binary),
+            precedence: Precedence::Comparison,
         },
         TokenType::GreaterEqual => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Parser::binary),
+            precedence: Precedence::Comparison,
         },
         TokenType::Less => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Parser::binary),
+            precedence: Precedence::Comparison,
         },
         TokenType::LessEqual => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Parser::binary),
+            precedence: Precedence::Comparison,
         },
         TokenType::Identifier => ParseRule {
             prefix: None,
@@ -370,7 +386,7 @@ fn get_rule<'a>(kind: TokenType) -> ParseRule<'a> {
             precedence: Precedence::None,
         },
         TokenType::False => ParseRule {
-            prefix: None,
+            prefix: Some(Parser::literal),
             infix: None,
             precedence: Precedence::None,
         },
@@ -390,7 +406,7 @@ fn get_rule<'a>(kind: TokenType) -> ParseRule<'a> {
             precedence: Precedence::None,
         },
         TokenType::Nil => ParseRule {
-            prefix: None,
+            prefix: Some(Parser::literal),
             infix: None,
             precedence: Precedence::None,
         },
@@ -420,7 +436,7 @@ fn get_rule<'a>(kind: TokenType) -> ParseRule<'a> {
             precedence: Precedence::None,
         },
         TokenType::True => ParseRule {
-            prefix: None,
+            prefix: Some(Parser::literal),
             infix: None,
             precedence: Precedence::None,
         },
