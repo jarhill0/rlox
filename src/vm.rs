@@ -2,6 +2,7 @@ use crate::chunk::{Chunk, OpCode};
 use crate::common;
 use crate::compiler;
 use crate::debug;
+use crate::object::Object;
 use crate::value::Value;
 
 pub struct VM {
@@ -60,6 +61,7 @@ impl<'a> VM {
                 }
                 Constant => {
                     let constant = self.read_constant();
+                    let constant = constant.clone();
                     self.push(constant);
                 }
                 OpCode::Nil => self.push(Value::Nil),
@@ -93,11 +95,17 @@ impl<'a> VM {
                     let val = self.pop();
                     self.push(Bool(val.is_falsey()));
                 }
-                Add => {
-                    if let Some(result) = self.binary_num_op(|a, b| Number(a + b)) {
-                        return result;
+                Add => match self.pop_two() {
+                    (Obj(Object::String(a)), Obj(Object::String(b))) => {
+                        self.push(Obj(Object::String(concatenate(&a, &b))))
                     }
-                }
+                    (Number(a), Number(b)) => self.push(Number(a + b)),
+                    (a, b) => {
+                        self.push_two(a, b);
+                        self.runtime_error("Operands must be two numbers or two strings.");
+                        return InterpretResult::RuntimeError;
+                    }
+                },
                 Subtract => {
                     if let Some(result) = self.binary_num_op(|a, b| Number(a - b)) {
                         return result;
@@ -175,9 +183,9 @@ impl<'a> VM {
         *self.chunk().get_at(self.pc - 1).unwrap()
     }
 
-    fn read_constant(&mut self) -> Value {
+    fn read_constant(&mut self) -> &Value {
         let index = self.read_byte();
-        *self.chunk().get_value(index).expect("Needed constant")
+        self.chunk().get_value(index).expect("Needed constant")
     }
 
     fn push(&mut self, value: Value) {
@@ -193,4 +201,8 @@ pub enum InterpretResult {
     Ok,
     CompileError,
     RuntimeError,
+}
+
+fn concatenate(a: &str, b: &str) -> String {
+    String::from(a) + b
 }

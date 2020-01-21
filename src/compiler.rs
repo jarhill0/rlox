@@ -4,6 +4,7 @@ use std::str::FromStr;
 use crate::chunk::{Byte, Chunk, OpCode};
 use crate::common::DEBUG_PRINT_CODE;
 use crate::debug::disassemble;
+use crate::object::Object;
 use crate::scanner::{Scanner, Token, TokenType};
 use crate::value::Value;
 
@@ -46,6 +47,13 @@ impl<'a> Parser<'a> {
         // it will parse because it was validated in the parser.
         let value = f64::from_str(self.previous().slice).unwrap();
         self.emit_constant(Value::Number(value));
+    }
+
+    fn string(&mut self) {
+        let slice = self.previous().slice;
+        self.emit_constant(Value::Obj(Object::String(String::from(
+            &slice[1..slice.len() - 1],
+        ))));
     }
 
     fn unary(&mut self) {
@@ -366,7 +374,7 @@ fn get_rule<'a>(kind: TokenType) -> ParseRule<'a> {
             precedence: Precedence::None,
         },
         TokenType::String => ParseRule {
-            prefix: None,
+            prefix: Some(Parser::string),
             infix: None,
             precedence: Precedence::None,
         },
