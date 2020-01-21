@@ -1,13 +1,5 @@
 use std::cmp::PartialEq;
 
-pub fn print(val: Value) {
-    match val {
-        Value::Nil => print!("nil"),
-        Value::Bool(val) => print!("{}", val),
-        Value::Number(val) => print!("{}", val),
-    }
-}
-
 #[derive(Copy, Clone)]
 pub enum Value {
     Nil,
@@ -21,6 +13,14 @@ impl Value {
             Value::Nil => true,
             Value::Bool(val) => !val,
             Value::Number(_) => false,
+        }
+    }
+
+    pub fn print(&self) {
+        match self {
+            Value::Nil => print!("nil"),
+            Value::Bool(val) => print!("{}", val),
+            Value::Number(val) => print!("{}", val),
         }
     }
 }

@@ -1,5 +1,4 @@
 use crate::chunk::{self, OpCode};
-use crate::value;
 
 pub fn disassemble(chunk: &chunk::Chunk, name: &str) {
     println!("== {} ==", name);
@@ -57,7 +56,7 @@ fn constant_instruction(name: &str, chunk: &chunk::Chunk, offset: usize) -> usiz
         .expect("Constant has one immediate.");
     print!("{:<16} {:4} '", name, constant);
 
-    value::print(*chunk.get_value(constant).unwrap());
+    chunk.get_value(constant).unwrap().print();
     println!("'");
     offset + 2
 }

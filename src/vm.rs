@@ -2,7 +2,7 @@ use crate::chunk::{Chunk, OpCode};
 use crate::common;
 use crate::compiler;
 use crate::debug;
-use crate::value::{self, Value};
+use crate::value::Value;
 
 pub struct VM {
     chunk: Option<Chunk>,
@@ -42,7 +42,7 @@ impl<'a> VM {
                 print!("          ");
                 for val in self.stack.iter() {
                     print!("[ ");
-                    value::print(*val);
+                    val.print();
                     print!(" ]");
                 }
                 println!();
@@ -54,7 +54,7 @@ impl<'a> VM {
             let op_code = OpCode::from_u8(instruction);
             match op_code {
                 Return => {
-                    value::print(self.pop());
+                    self.pop().print();
                     println!();
                     return InterpretResult::Ok;
                 }
