@@ -3,14 +3,14 @@ use std::cmp::PartialEq;
 use crate::object::Object;
 
 #[derive(Clone)]
-pub enum Value {
+pub enum Value<'a> {
     Nil,
     Bool(bool),
     Number(f64),
-    Obj(Object),
+    Obj(&'a Object),
 }
 
-impl Value {
+impl Value<'_> {
     pub fn is_falsey(self) -> bool {
         match self {
             Value::Nil => true,
@@ -30,7 +30,7 @@ impl Value {
     }
 }
 
-impl PartialEq for Value {
+impl PartialEq for Value<'_> {
     fn eq(&self, other: &Self) -> bool {
         // thanks! https://www.reddit.com/r/rust/comments/4fi8ka/_/d2902oa/
         use Value::*;

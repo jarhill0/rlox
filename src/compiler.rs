@@ -22,7 +22,7 @@ struct Parser<'a> {
     current: Option<Token<'a>>,
     previous: Option<Token<'a>>,
     scanner: Scanner<'a>,
-    compiling_chunk: &'a mut Chunk,
+    compiling_chunk: &'a mut Chunk<'a>,
     had_error: bool,
     panic_mode: bool,
 }

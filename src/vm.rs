@@ -5,18 +5,20 @@ use crate::debug;
 use crate::object::Object;
 use crate::value::Value;
 
-pub struct VM {
-    chunk: Option<Chunk>,
+pub struct VM<'a> {
+    chunk: Option<Chunk<'a>>,
     pc: usize,
-    stack: Vec<Value>,
+    stack: Vec<Value<'a>>,
+    objects: Vec<Object>,
 }
 
-impl<'a> VM {
-    pub fn new() -> VM {
+impl<'a> VM<'_> {
+    pub fn new() -> VM<'a> {
         VM {
             chunk: None,
             pc: 0,
             stack: vec![],
+            objects: vec![],
         }
     }
 
@@ -97,7 +99,7 @@ impl<'a> VM {
                 }
                 Add => match self.pop_two() {
                     (Obj(Object::String(a)), Obj(Object::String(b))) => {
-                        self.push(Obj(Object::String(concatenate(&a, &b))))
+                        self.push(Obj(self.new_object(Object::String(concatenate(&a, &b)))))
                     }
                     (Number(a), Number(b)) => self.push(Number(a + b)),
                     (a, b) => {
@@ -127,7 +129,7 @@ impl<'a> VM {
 
     fn binary_num_op<T>(&mut self, operation: T) -> Option<InterpretResult>
     where
-        T: Fn(f64, f64) -> Value,
+        T: Fn(f64, f64) -> Value<'a>,
     {
         let (a, b) = self.pop_two();
         let mut good_types = true;
@@ -194,6 +196,11 @@ impl<'a> VM {
 
     fn pop(&mut self) -> Value {
         self.stack.pop().expect("Needed stack value.")
+    }
+
+    fn new_object(&mut self, object: Object) -> &Object {
+        self.objects.push(object);
+        &self.objects[self.objects.len() - 1]
     }
 }
 

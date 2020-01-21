@@ -42,14 +42,14 @@ impl Byte for u8 {
     }
 }
 
-pub struct Chunk {
+pub struct Chunk<'a> {
     codes: Vec<u8>,
-    constants: Vec<value::Value>,
+    constants: Vec<value::Value<'a>>,
     lines: Vec<u64>,
 }
 
-impl Chunk {
-    pub fn new() -> Chunk {
+impl<'a> Chunk<'_> {
+    pub fn new() -> Chunk<'a> {
         Chunk {
             codes: vec![],
             constants: vec![],
