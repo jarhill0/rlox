@@ -1,3 +1,4 @@
+use crate::bits::to_u16;
 use crate::chunk::{self, Chunk, OpCode};
 
 pub fn disassemble(chunk: &chunk::Chunk, name: &str) {
@@ -49,6 +50,9 @@ pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
         SetGlobal => constant_instruction("SetGlobal", chunk, offset),
         GetLocal => byte_instruction("GetLocal", chunk, offset),
         SetLocal => byte_instruction("SetLocal", chunk, offset),
+        Jump => jump_instruction("Jump", 1, chunk, offset),
+        JumpIfFalse => jump_instruction("JumpIfFalse", 1, chunk, offset),
+        Loop => jump_instruction("Loop", -1, chunk, offset),
     }
 }
 
@@ -74,4 +78,22 @@ fn byte_instruction(name: &str, chunk: &Chunk, offset: usize) -> usize {
         .expect("Byte instr has one immediate.");
     println!("{:<16} {:4}", name, slot);
     offset + 2
+}
+
+fn jump_instruction(name: &str, sign: isize, chunk: &Chunk, offset: usize) -> usize {
+    let jump = to_u16(
+        *chunk
+            .get_at(offset + 1)
+            .expect("jump instruction has first immediate"),
+        *chunk
+            .get_at(offset + 2)
+            .expect("jump instruction has second immediate"),
+    );
+    println!(
+        "{:<16} {:4} -> {}",
+        name,
+        offset,
+        (offset as isize) + 3 + sign * jump as isize
+    );
+    offset + 3
 }

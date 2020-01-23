@@ -25,6 +25,9 @@ pub enum OpCode {
     SetGlobal,
     GetLocal,
     SetLocal,
+    JumpIfFalse,
+    Jump,
+    Loop,
 }
 
 impl OpCode {
@@ -80,6 +83,10 @@ impl Chunk {
 
     pub fn get_at(&self, ind: usize) -> Option<&u8> {
         self.codes.get(ind)
+    }
+
+    pub fn set_at(&mut self, ind: usize, thing: impl Byte) {
+        self.codes[ind] = thing.byte();
     }
 
     pub fn line_of(&self, ind: usize) -> u64 {

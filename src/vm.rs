@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::bits::to_u16;
 use crate::chunk::{Chunk, OpCode};
 use crate::common;
 use crate::compiler;
@@ -58,6 +59,22 @@ impl<'a> VM {
             let instruction = self.read_byte();
             let op_code = OpCode::from_u8(instruction);
             match op_code {
+                Jump => {
+                    let offset = self.read_short();
+                    self.pc += offset as usize;
+                }
+                JumpIfFalse => {
+                    let offset = self.read_short();
+                    let peek = self.pop();
+                    if peek.is_falsey() {
+                        self.pc += offset as usize;
+                    }
+                    self.push(peek);
+                }
+                Loop => {
+                    let offset = self.read_short();
+                    self.pc -= offset as usize;
+                }
                 Print => {
                     self.pop().print();
                     println!();
@@ -230,6 +247,12 @@ impl<'a> VM {
     fn read_byte(&mut self) -> u8 {
         self.pc += 1;
         *self.chunk().get_at(self.pc - 1).unwrap()
+    }
+
+    fn read_short(&mut self) -> u16 {
+        let upper = self.read_byte();
+        let lower = self.read_byte();
+        to_u16(lower, upper)
     }
 
     fn read_constant(&mut self) -> &Value {

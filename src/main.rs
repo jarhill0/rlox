@@ -7,6 +7,7 @@ use std::process;
 #[macro_use]
 extern crate num_derive;
 
+mod bits;
 mod chunk;
 mod common;
 mod compiler;
