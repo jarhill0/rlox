@@ -1,4 +1,5 @@
 use std::cmp::PartialOrd;
+use std::convert::TryInto;
 use std::str::FromStr;
 
 use crate::chunk::{Byte, Chunk, OpCode};
@@ -24,6 +25,7 @@ struct Parser<'a> {
     compiling_chunk: &'a mut Chunk,
     had_error: bool,
     panic_mode: bool,
+    compiler: Compiler<'a>,
 }
 
 impl<'a> Parser<'a> {
@@ -35,6 +37,7 @@ impl<'a> Parser<'a> {
             previous: None,
             had_error: false,
             panic_mode: false,
+            compiler: Compiler::new(),
         }
     }
 
@@ -72,6 +75,10 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) {
         if self.matches(TokenType::Print) {
             self.print_statement();
+        } else if self.matches(TokenType::LeftBrace) {
+            self.begin_scope();
+            self.block();
+            self.end_scope();
         } else {
             self.expression_statement();
         }
@@ -79,6 +86,36 @@ impl<'a> Parser<'a> {
 
     fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);
+    }
+
+    fn block(&mut self) {
+        while !self.check(TokenType::RightBrace) && !self.check(TokenType::EOF) {
+            self.declaration();
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}' after block.");
+    }
+
+    fn begin_scope(&mut self) {
+        self.compiler.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.compiler.scope_depth -= 1;
+
+        let drop_count = self
+            .compiler
+            .locals
+            .iter()
+            .rev()
+            .take_while(|local| local.depth > self.compiler.scope_depth)
+            .count();
+        self.compiler
+            .locals
+            .truncate(self.compiler.locals.len() - drop_count);
+        for _ in 0..drop_count {
+            self.emit_byte(OpCode::Pop);
+        }
     }
 
     fn var_declaration(&mut self) {
@@ -99,15 +136,62 @@ impl<'a> Parser<'a> {
 
     fn parse_variable(&mut self, error_message: &str) -> u8 {
         self.consume(TokenType::Identifier, error_message);
+
+        self.declare_variable();
+        if self.compiler.local_scope() {
+            // locals have different lookup
+            return 0; // doesn't matter
+        }
+
         self.identifier_constant(&self.previous())
     }
 
     fn define_variable(&mut self, global: u8) {
+        if self.compiler.local_scope() {
+            self.compiler.mark_top_initialized();
+            return;
+        }
         self.emit_bytes(OpCode::DefineGlobal, global);
     }
 
     fn identifier_constant(&mut self, name: &Token) -> u8 {
         self.make_constant(Value::Obj(Object::String(String::from(name.slice))))
+    }
+
+    fn declare_variable(&mut self) {
+        // Globals implicitly declared
+        if self.compiler.global_scope() {
+            return;
+        }
+
+        let name = self.previous().slice;
+        let mut had_error = false;
+        for _ in self
+            .compiler
+            .locals
+            .iter()
+            .rev()
+            .take_while(|local| !(local.initialized && local.depth < self.compiler.scope_depth))
+            .filter(|local| name == local.name)
+        {
+            had_error = true;
+        }
+        if had_error {
+            self.error("Variable with this name already declared in this scope.");
+        }
+
+        self.add_local(name);
+    }
+
+    fn add_local(&mut self, name: &'a str) {
+        if self.compiler.count() > std::u8::MAX as usize {
+            self.error("Too many local variables in function.");
+            return;
+        }
+
+        self.compiler
+            .locals
+            .push(Local::new(name, self.compiler.scope_depth));
     }
 
     fn expression_statement(&mut self) {
@@ -159,13 +243,25 @@ impl<'a> Parser<'a> {
     }
 
     fn named_variable(&mut self, name: Token, can_assign: bool) {
-        let arg = self.identifier_constant(&name);
+        let (result, error) = self.compiler.resolve_local(&name);
+        match error {
+            Some(message) => self.error(message),
+            None => (),
+        }
+        let (get_op, set_op, arg) = match result {
+            Some(arg) => (OpCode::GetLocal, OpCode::SetLocal, arg),
+            None => (
+                OpCode::GetGlobal,
+                OpCode::SetGlobal,
+                self.identifier_constant(&name),
+            ),
+        };
 
         if can_assign && self.matches(TokenType::Equal) {
             self.expression();
-            self.emit_bytes(OpCode::SetGlobal, arg);
+            self.emit_bytes(set_op, arg as u8);
         } else {
-            self.emit_bytes(OpCode::GetGlobal, arg);
+            self.emit_bytes(get_op, arg as u8);
         }
     }
 
@@ -343,6 +439,76 @@ impl<'a> Parser<'a> {
 
         eprintln!(": {}", message);
         self.had_error = true;
+    }
+}
+
+struct Compiler<'a> {
+    locals: Vec<Local<'a>>,
+    scope_depth: usize,
+}
+
+impl<'a> Compiler<'_> {
+    fn new() -> Compiler<'a> {
+        Compiler {
+            locals: vec![],
+            scope_depth: 0,
+        }
+    }
+
+    fn global_scope(&self) -> bool {
+        self.scope_depth == 0
+    }
+
+    fn local_scope(&self) -> bool {
+        !self.global_scope()
+    }
+
+    fn count(&self) -> usize {
+        self.locals.len()
+    }
+
+    fn resolve_local(&self, name: &Token) -> (Option<u8>, Option<&'static str>) {
+        match self
+            .locals
+            .iter()
+            .rev()
+            .enumerate()
+            .filter(|(_, local)| local.name == name.slice)
+            .next()
+        {
+            Some((i, local)) => {
+                let error = if local.initialized {
+                    None
+                } else {
+                    Some("Cannot read local variable in its own initializer.")
+                };
+                (Some(i.try_into().unwrap()), error)
+            }
+            None => (None, None),
+        }
+    }
+
+    fn mark_top_initialized(&mut self) {
+        let top = self.locals.len() - 1;
+        let top = self.locals.get_mut(top).unwrap();
+        top.initialized = true;
+    }
+}
+
+#[derive(Copy, Clone)]
+struct Local<'a> {
+    name: &'a str,
+    depth: usize,
+    initialized: bool,
+}
+
+impl<'a> Local<'_> {
+    fn new(name: &'a str, depth: usize) -> Local<'a> {
+        Local {
+            name,
+            depth,
+            initialized: false,
+        }
     }
 }
 

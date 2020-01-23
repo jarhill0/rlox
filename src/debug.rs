@@ -1,4 +1,4 @@
-use crate::chunk::{self, OpCode};
+use crate::chunk::{self, Chunk, OpCode};
 
 pub fn disassemble(chunk: &chunk::Chunk, name: &str) {
     println!("== {} ==", name);
@@ -47,6 +47,8 @@ pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
         DefineGlobal => constant_instruction("DefineGlobal", chunk, offset),
         GetGlobal => constant_instruction("GetGlobal", chunk, offset),
         SetGlobal => constant_instruction("SetGlobal", chunk, offset),
+        GetLocal => byte_instruction("GetLocal", chunk, offset),
+        SetLocal => byte_instruction("SetLocal", chunk, offset),
     }
 }
 
@@ -63,5 +65,13 @@ fn constant_instruction(name: &str, chunk: &chunk::Chunk, offset: usize) -> usiz
 
     chunk.get_value(constant).unwrap().print();
     println!("'");
+    offset + 2
+}
+
+fn byte_instruction(name: &str, chunk: &Chunk, offset: usize) -> usize {
+    let slot = chunk
+        .get_at(offset + 1)
+        .expect("Byte instr has one immediate.");
+    println!("{:<16} {:4}", name, slot);
     offset + 2
 }

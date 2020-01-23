@@ -74,6 +74,16 @@ impl<'a> VM {
                 Pop => {
                     self.pop();
                 }
+                GetLocal => {
+                    let slot = self.read_byte();
+                    self.push(self.stack.get(slot as usize).expect("needed local").clone());
+                }
+                SetLocal => {
+                    let slot = self.read_byte();
+                    let value = self.pop();
+                    self.stack[slot as usize] = value.clone();
+                    self.push(value);
+                }
                 GetGlobal => {
                     let name = self.read_string();
                     match self.globals.get(&name) {
