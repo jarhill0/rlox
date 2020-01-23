@@ -42,6 +42,11 @@ pub fn disassemble_instr(chunk: &chunk::Chunk, offset: usize) -> usize {
         Equal => simple_instruction("Equal", offset),
         Less => simple_instruction("Less", offset),
         Greater => simple_instruction("Greater", offset),
+        Print => simple_instruction("Print", offset),
+        Pop => simple_instruction("Pop", offset),
+        DefineGlobal => constant_instruction("DefineGlobal", chunk, offset),
+        GetGlobal => constant_instruction("GetGlobal", chunk, offset),
+        SetGlobal => constant_instruction("SetGlobal", chunk, offset),
     }
 }
 

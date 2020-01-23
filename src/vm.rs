@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::chunk::{Chunk, OpCode};
 use crate::common;
 use crate::compiler;
@@ -9,6 +11,7 @@ pub struct VM {
     chunk: Option<Chunk>,
     pc: usize,
     stack: Vec<Value>,
+    globals: HashMap<String, Value>,
 }
 
 impl<'a> VM {
@@ -17,6 +20,7 @@ impl<'a> VM {
             chunk: None,
             pc: 0,
             stack: vec![],
+            globals: HashMap::new(),
         }
     }
 
@@ -54,9 +58,11 @@ impl<'a> VM {
             let instruction = self.read_byte();
             let op_code = OpCode::from_u8(instruction);
             match op_code {
-                Return => {
+                Print => {
                     self.pop().print();
                     println!();
+                }
+                Return => {
                     return InterpretResult::Ok;
                 }
                 Constant => {
@@ -67,6 +73,41 @@ impl<'a> VM {
                 OpCode::Nil => self.push(Value::Nil),
                 True => self.push(Bool(true)),
                 False => self.push(Bool(false)),
+                Pop => {
+                    self.pop();
+                }
+                GetGlobal => {
+                    let name = self.read_string();
+                    match self.globals.get(&name) {
+                        None => {
+                            self.runtime_error(&format!("Undefined variable '{}'.", name));
+                            return InterpretResult::RuntimeError;
+                        }
+                        Some(value) => {
+                            let value = value.clone();
+                            self.push(value);
+                        }
+                    }
+                }
+                DefineGlobal => {
+                    let name = self.read_string();
+                    let value = self.pop();
+                    self.globals.insert(name, value);
+                }
+                SetGlobal => {
+                    let name = self.read_string();
+                    let value = self.pop();
+                    match self.globals.insert(name, value.clone()) {
+                        Some(_) => (),
+                        None => {
+                            let name = self.read_string();
+                            self.globals.remove(&name);
+                            self.runtime_error(&format!("Undefined variable '{}'.", name));
+                            return InterpretResult::RuntimeError;
+                        }
+                    }
+                    self.push(value);
+                }
                 Equal => {
                     let (a, b) = self.pop_two();
                     self.push(Bool(a == b));
@@ -194,6 +235,15 @@ impl<'a> VM {
 
     fn pop(&mut self) -> Value {
         self.stack.pop().expect("Needed stack value.")
+    }
+
+    fn read_string(&mut self) -> String {
+        match self.read_constant() {
+            Value::Obj(object) => match object {
+                Object::String(string) => string.clone(),
+            },
+            _ => panic!("Not an object."),
+        }
     }
 }
 
