@@ -190,9 +190,7 @@ impl<'a> Parser<'a> {
                 self.error("Expect expression.");
                 return;
             }
-            Some(callable) => {
-                callable(self, can_assign);
-            }
+            Some(callable) => callable(self, can_assign),
         }
 
         while precedence <= get_rule(self.current().kind).precedence {

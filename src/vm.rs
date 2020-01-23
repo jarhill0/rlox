@@ -62,9 +62,7 @@ impl<'a> VM {
                     self.pop().print();
                     println!();
                 }
-                Return => {
-                    return InterpretResult::Ok;
-                }
+                Return => return InterpretResult::Ok,
                 Constant => {
                     let constant = self.read_constant();
                     let constant = constant.clone();
